@@ -1,32 +1,17 @@
-import redis from 'redis';
+import { Redis } from '@upstash/redis';
 
 let redisClient = null;
 
 // Initialize Redis client
 export const initRedis = async () => {
   try {
-    redisClient = redis.createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-      socket: {
-        reconnectStrategy: (retries) => {
-          if (retries > 10) {
-            console.error('Redis reconnection failed after 10 retries');
-            return new Error('Redis connection failed');
-          }
-          return Math.min(retries * 100, 3000);
-        }
-      }
+    redisClient = new Redis({
+      url: process.env.UPSTASH_URL || process.env.REDIS_URL,
+      // TODO: HotSwap — Upstash doesn't support socket reconnection strategy, handles reconnection automatically
     });
 
-    redisClient.on('error', (err) => {
-      console.error('Redis Client Error:', err);
-    });
-
-    redisClient.on('connect', () => {
-      console.log('Connected to Redis');
-    });
-
-    await redisClient.connect();
+    // TODO: HotSwap — Upstash doesn't support event listeners for error/connect events
+    console.log('Redis client initialized');
     return redisClient;
   } catch (error) {
     console.error('Failed to connect to Redis:', error);
@@ -54,7 +39,7 @@ export const setPresence = async (userId, status, expiresAt = null) => {
     
     if (expiresAt) {
       const ttl = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
-      await redisClient.setEx(key, ttl, JSON.stringify(data));
+      await redisClient.setex(key, ttl, JSON.stringify(data));
     } else {
       await redisClient.set(key, JSON.stringify(data));
     }
@@ -97,7 +82,7 @@ export const getMultiplePresences = async (userIds) => {
   
   try {
     const keys = userIds.map(id => `presence:${id}`);
-    const values = await redisClient.mGet(keys);
+    const values = await redisClient.mget(...keys);
     
     const presences = {};
     userIds.forEach((userId, index) => {
@@ -154,4 +139,3 @@ export const publishPresenceUpdate = async (userId, presence) => {
 };
 
 export default redisClient;
-
