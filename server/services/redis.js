@@ -6,7 +6,7 @@ let redisClient = null;
 export const initRedis = async () => {
   try {
     redisClient = new Redis({
-      url: process.env.UPSTASH_URL || process.env.REDIS_URL,
+      url: process.env.UPSTASH_URL,
       // TODO: HotSwap — Upstash doesn't support socket reconnection strategy, handles reconnection automatically
     });
 
